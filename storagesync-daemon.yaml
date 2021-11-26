@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: storage-sync
+  namespace: kube-system
+  labels:
+    app: storage-sync
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      name: storage-sync
+  template:
+    metadata:
+      labels:
+        name: storage-sync
+    spec:
+      imagePullSecrets:
+       - name: regcred
+      volumes:
+       - name: node-persistent-data-dir
+         hostPath:
+           path: /var/snap/microk8s/common/default-storage/
+      serviceAccountName: storagesyncaccount
+      containers:
+       - name: storage-sync
+         image: ghcr.io/paulosotu/storage-sync:latest
+         env:
+          - name: APP_NAME
+            value: storage-sync
+          - name: LOG_LEVEL
+            value: INFO
+          - name: UPDATE_INTERVAL_SECONDS
+            value: "10" 
+          - name: SHARED_STORAGE_FOLDER
+            value: /data-sync
+          - name: NODE_HOSTNAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: 
+          - name: PRIVATE_CERT
+            valueFrom:
+              secretKeyRef:
+                name: ssh-storage
+                key: id_rsa
+          - name: PUBLIC_CERT
+            valueFrom:
+              secretKeyRef:
+                name: ssh-storage
+                key: id_rsa.pub
+         securityContext:
+           privileged: true
+         volumeMounts:
+          - name: node-persistent-data-dir
+            mountPath: $(SHARED_STORAGE_FOLDER)
+         ports:
+          - containerPort: 22
